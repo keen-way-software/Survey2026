@@ -1,3 +1,4 @@
+# BEGIN_FILE_CONTENT: .github/workflows/AndroidBuild.yml
 name: Android CI & Release
 
 on:
@@ -68,7 +69,7 @@ defaults:
 
 env:
   OWNER: ${{ github.repository_owner }}
-  REPO: ${{ github.repository }} # e.g. ishizuki-tech/SurveyNav2025
+  REPO: ${{ github.repository }} # e.g. ishizuki-tech/Survey2026
   ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
   ANDROID_HOME: /usr/local/lib/android/sdk
 
@@ -132,29 +133,30 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Install Android SDK & NDK
+      - name: Install Android SDK (base)
         uses: android-actions/setup-android@v3
-        with:
-          ndk-version: ${{ inputs.ndk_version }}
 
-      - name: Install required SDK components
+      - name: Install required SDK components (platform/build-tools/NDK)
         run: |-
           set -euo pipefail
           COMPILE_SDK="${{ inputs.compile_sdk }}"
           BUILD_TOOLS="${{ inputs.build_tools }}"
+          NDK_VERSION="${{ inputs.ndk_version }}"
 
           echo "::group::Android SDK install"
           echo "Installing:"
           echo "  - platforms;android-${COMPILE_SDK}"
           echo "  - build-tools;${BUILD_TOOLS}"
           echo "  - platform-tools"
+          echo "  - ndk;${NDK_VERSION}"
           echo "::endgroup::"
 
           set +o pipefail
           yes | sdkmanager --install \
             "platforms;android-${COMPILE_SDK}" \
             "build-tools;${BUILD_TOOLS}" \
-            "platform-tools"
+            "platform-tools" \
+            "ndk;${NDK_VERSION}"
           set -o pipefail
 
       - name: Accept Android SDK licenses
@@ -507,7 +509,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
-          target_commitish: ${{ github.sha }}
+          # Use the actual checked-out commit for this build (more robust than github.sha).
+          target_commitish: ${{ steps.gitdebug.outputs.sha }}
           body: ${{ steps.notes.outputs.body }}
           files: |
             ${{ steps.collect.outputs.apk_list }}
@@ -590,7 +593,7 @@ jobs:
           echo "apk_name=${APK_NAME}" >> "$GITHUB_OUTPUT"
           echo "apk_url=${APK_URL}" >> "$GITHUB_OUTPUT"
 
-      - name: Update Wiki (Home + TAG.md)
+      - name: Update Wiki (Home/HOME unified + TAG.md + Latest.md)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APK_URL: ${{ steps.apk.outputs.apk_url }}
@@ -616,6 +619,9 @@ jobs:
             git init
           fi
 
+          # ------------------------------------------------------------
+          # Build page for this tag
+          # ------------------------------------------------------------
           {
             echo "# 📦 SurveyNav — Build ${TAG}"
             echo "Generated: ${DATE}"
@@ -634,26 +640,55 @@ jobs:
             echo "- [All Releases](https://github.com/${REPO}/releases)"
           } > "${TAG}.md"
 
+          # ------------------------------------------------------------
+          # Latest page (stable link)
+          # ------------------------------------------------------------
+          {
+            echo "# ⭐ Latest Build"
+            echo "Updated: ${DATE}"
+            echo ""
+            echo "- Latest tag: [${TAG}](https://github.com/${REPO}/wiki/${TAG})"
+            echo ""
+            echo "## ⬇️ Download"
+            if [ -n "$BUILD_APK_URL" ]; then
+              echo "- [Latest APK](${BUILD_APK_URL})"
+            else
+              echo "- [Releases](https://github.com/${REPO}/releases)"
+            fi
+            echo "- [All Releases](https://github.com/${REPO}/releases)"
+          } > "Latest.md"
+
+          # ------------------------------------------------------------
+          # Generate Home content into a temp file
+          # IMPORTANT: GitHub Wiki can behave weirdly if both Home.md and HOME.md exist.
+          # Strategy: keep both synchronized so the root page never shows stale content.
+          # ------------------------------------------------------------
+          HOME_CANON="Home.md"
+          HOME_LEGACY="HOME.md"
+          HOME_TMP="_Home.generated.md"
+
           {
             echo "# 🏠 SurveyNav Wiki Home"
             echo "Updated: ${DATE}"
             echo ""
+            echo "## ⭐ Latest"
+            echo "- [Latest](https://github.com/${REPO}/wiki/Latest)"
+            echo ""
             echo "## 📜 Build History (latest 20)"
-          } > Home.md
+          } > "$HOME_TMP"
 
           MAP_TMP="_link-map.txt"
           : > "$MAP_TMP"
 
           # ------------------------------------------------------------
           # FIX: Do NOT use filesystem mtime from a fresh clone.
-          # Instead, sort by git commit time per page (robust "latest").
-          # New/untracked pages (like this run's TAG.md) get "now" timestamp
-          # so they always appear at the top.
+          # Sort by git commit time per page (robust "latest").
+          # Untracked/new pages (like this run's TAG.md) get "now".
           # ------------------------------------------------------------
           TMP_SORT="_home-sort.tmp"
           : > "$TMP_SORT"
 
-          FILES="$(ls -1 *.md 2>/dev/null | grep -v '^Home\.md$' || true)"
+          FILES="$(ls -1 *.md 2>/dev/null | grep -Ev '^(Home|HOME|Latest)\.md$' || true)"
           if [ -n "$FILES" ]; then
             while IFS= read -r f; do
               [ -n "$f" ] || continue
@@ -674,13 +709,13 @@ jobs:
           LIST="$(sort -nr "$TMP_SORT" 2>/dev/null | head -n 20 | awk '{ $1=""; sub(/^ /,""); print }' || true)"
 
           if [ -z "$LIST" ]; then
-            echo "_No builds yet._" >> Home.md
+            echo "_No builds yet._" >> "$HOME_TMP"
           else
             echo "$LIST" | while read -r f; do
               base="$(basename "$f" .md)"
               slug="$(printf '%s' "$base" | sed -E 's@[[:space:]]+@-@g; s@/@-@g; s/-+/-/g')"
-              printf -- "- [%s](https://github.com/%s/wiki/%s)\n" "$base" "$REPO" "$slug" >> Home.md
-              printf -- "%s.md -> %s\n" "$base.md" "$slug" >> "$MAP_TMP"
+              printf -- "- [%s](https://github.com/%s/wiki/%s)\n" "$base" "$REPO" "$slug" >> "$HOME_TMP"
+              printf -- "%s -> %s\n" "$f" "$slug" >> "$MAP_TMP"
             done
           fi
 
@@ -688,7 +723,11 @@ jobs:
             echo ""
             echo "## 🌐 GitHub Pages"
             echo "- [Downloads Page](${BASE_URL})"
-          } >> Home.md
+          } >> "$HOME_TMP"
+
+          # Sync BOTH Home variants to avoid split-brain.
+          cp "$HOME_TMP" "$HOME_CANON"
+          cp "$HOME_TMP" "$HOME_LEGACY"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -772,3 +811,4 @@ jobs:
           publish_branch: gh-pages
           force_orphan: true
           commit_message: "Update GH Pages + Wiki (${{ env.TAG }})"
+# END_FILE_CONTENT
