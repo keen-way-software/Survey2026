@@ -594,6 +594,7 @@ jobs:
           echo "apk_url=${APK_URL}" >> "$GITHUB_OUTPUT"
 
       - name: Update Wiki (Home/HOME unified + TAG.md + Latest.md)
+
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APK_URL: ${{ steps.apk.outputs.apk_url }}
@@ -618,6 +619,13 @@ jobs:
           if [ ! -d ".git" ]; then
             git init
           fi
+
+          # ------------------------------------------------------------
+          # Cleanup: remove previously-committed temp files (if any).
+          # This will be committed as a deletion.
+          # ------------------------------------------------------------
+          # English comments only.
+          rm -f _Home.generated.md _home-sort.tmp _link-map.txt || true
 
           # ------------------------------------------------------------
           # Build page for this tag
@@ -659,13 +667,14 @@ jobs:
           } > "Latest.md"
 
           # ------------------------------------------------------------
-          # Generate Home content into a temp file
-          # IMPORTANT: GitHub Wiki can behave weirdly if both Home.md and HOME.md exist.
-          # Strategy: keep both synchronized so the root page never shows stale content.
+          # Generate Home content (use /tmp so it never gets committed)
           # ------------------------------------------------------------
           HOME_CANON="Home.md"
           HOME_LEGACY="HOME.md"
-          HOME_TMP="_Home.generated.md"
+
+          HOME_TMP="$(mktemp)"
+          TMP_SORT="$(mktemp)"
+          MAP_TMP="$(mktemp)"
 
           {
             echo "# 🏠 SurveyNav Wiki Home"
@@ -677,17 +686,13 @@ jobs:
             echo "## 📜 Build History (latest 20)"
           } > "$HOME_TMP"
 
-          MAP_TMP="_link-map.txt"
+          : > "$TMP_SORT"
           : > "$MAP_TMP"
 
           # ------------------------------------------------------------
-          # FIX: Do NOT use filesystem mtime from a fresh clone.
-          # Sort by git commit time per page (robust "latest").
-          # Untracked/new pages (like this run's TAG.md) get "now".
+          # Sort by git commit time per page (not clone mtime).
+          # Untracked/new pages get "now" timestamp.
           # ------------------------------------------------------------
-          TMP_SORT="_home-sort.tmp"
-          : > "$TMP_SORT"
-
           FILES="$(ls -1 *.md 2>/dev/null | grep -Ev '^(Home|HOME|Latest)\.md$' || true)"
           if [ -n "$FILES" ]; then
             while IFS= read -r f; do
@@ -729,9 +734,14 @@ jobs:
           cp "$HOME_TMP" "$HOME_CANON"
           cp "$HOME_TMP" "$HOME_LEGACY"
 
+          # Cleanup tmp files (paranoia; they are in /tmp anyway)
+          rm -f "$HOME_TMP" "$TMP_SORT" "$MAP_TMP" || true
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .
+
+          # Use -A so deletions (like _Home.generated.md) are staged reliably.
+          git add -A
           git commit -m "Update Wiki ${TAG}" || git commit --allow-empty -m "Ensure wiki"
           git branch -M master
           git remote remove origin 2>/dev/null || true
