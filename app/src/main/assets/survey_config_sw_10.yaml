@@ -83,61 +83,6 @@ prompts:
       Swali: {{QUESTION}}
       Jibu: {{ANSWER}}
 
-  - nodeId: Q2
-    prompt: |-
-      Kazi:
-      - Tambua udhaifu (hakuna kipimo, kiwango cha juu hakijawekwa, mpaka kutoeleweka).
-      - Toa expected_answer moja thabiti: hasara ya juu ya mavuno unayokubali ili kuvuna siku 10 mapema (% au magunia/ekari).
-      - Uliza followup_question 1 tu ili kuthibitisha JIBU HILO HILO (au "" ikiwa halihitajiki).
-      - Toa score 1–100.
-
-      Swali: {{QUESTION}}
-      Jibu: {{ANSWER}}
-
-  - nodeId: Q3
-    prompt: |-
-      Kazi:
-      - Tambua udhaifu (hakuna kizingiti, kipimo kutoeleweka, wadudu vs magonjwa kuchanganywa).
-      - Toa expected_answer moja thabiti: kizingiti wazi cha kubadilisha (kipimo + kiwango + hatua ya zao).
-      - Uliza followup_question 1 tu ili kuthibitisha JIBU HILO HILO (au "" ikiwa halihitajiki).
-      - Toa score 1–100.
-
-      Swali: {{QUESTION}}
-      Jibu: {{ANSWER}}
-
-  - nodeId: Q4
-    prompt: |-
-      Kazi:
-      - Tambua udhaifu (sifa za jumla tu, namba hazipo).
-      - Toa expected_answer moja thabiti: malengo ya aina mbadala, angalau kigezo 1 kinachopimika (DTM, FAW, hatua ya ukame, mavuno).
-      - Uliza followup_question 1 tu ili kuthibitisha JIBU HILO HILO (au "" ikiwa halihitajiki).
-      - Toa score 1–100.
-
-      Swali: {{QUESTION}}
-      Jibu: {{ANSWER}}
-
-  - nodeId: Q5
-    prompt: |-
-      Kazi:
-      - Tambua udhaifu (baseline haipo, kipimo hakipo, kanuni ya uamuzi haijabainishwa).
-      - Toa expected_answer moja thabiti: mavuno ya chini unayokubali katika mwaka mbaya (% au magunia/ekari) yakirejea baseline.
-      - Uliza followup_question 1 tu ili kuthibitisha JIBU HILO HILO (au "" ikiwa halihitajiki).
-      - Toa score 1–100.
-
-      Swali: {{QUESTION}}
-      Jibu: {{ANSWER}}
-
-  - nodeId: Q6
-    prompt: |-
-      Kazi:
-      - Tambua udhaifu (wakati haueleweki, hatua ya ukuaji haijafafanuliwa).
-      - Toa expected_answer moja thabiti: wakati/hatua ya ukame unaodhuru zaidi + sababu fupi (sentensi moja ya sababu).
-      - Uliza followup_question 1 tu ili kuthibitisha JIBU HILO HILO (au "" ikiwa halihitajiki).
-      - Toa score 1–100.
-
-      Swali: {{QUESTION}}
-      Jibu: {{ANSWER}}
-
 model_defaults:
   default_model_url: "https://huggingface.co/google/gemma-3n-E4B-it-litert-lm/resolve/main/gemma-3n-E4B-it-int4.litertlm"
   default_file_name: "Gemma3n4B.litertlm"
