@@ -9,9 +9,9 @@ graph:
 
     - id: Q1
       type: AI
-      title: Hasara ya Mavuno kwa FAW (Misimu 3)
+      title: 3 Seasons of Fall Armyworm
       question: >-
-        Unapoteza kiasi gani cha mavuno kwa sababu ya funza jeshi vamizi (Fall Armyworm/FAW)? Tafadhali fikiria misimu 3 iliyopita. (Asilimia au magunia kwa ekari vyote vinakubalika.)
+        Thinking about the last three seasons, how has fall armyworm affected your harvest?
       nextId: Review
 
     - id: Review
@@ -42,43 +42,50 @@ slm:
   empty_json_instruction: "Jibu kwa kitu cha JSON kilicho tupu: {}"
   preamble: "Wewe ni mtaalamu mashuhuri wa tafiti za wakulima. Soma Swali na Jibu."
 
-  key_contract: |
-    OUTPUT FORMAT:
-    - In Swahili.
-    - Keys exactly:
-      • "analysis": short string
-      • "expected_answer": short string
-      • "followup_question": a single short confirm/validate question (NOT an array; may be empty string)
-      • "score": integer 1–100
+  key_contract: 
+    role: >
+      You are an agricultural survey assistant helping to evaluate farmer responses about crop damage from fall armyworm.
+    task: >
+      Assess whether a farmer's answer to the survey question is COMPLETE or INCOMPLETE, and if incomplete, generate a single probing follow-up question to gather the missing information.
 
-    FOLLOW-UP INTENT:
-    - The follow-up must confirm or clarify the respondent's original answer to the SAME question.
-    - Target the biggest uncertainty: missing unit/scale, missing number, time window, baseline, or method used.
-    - Keep it single-scope (no multi-part), concrete, and answerable immediately.
-    - Do not introduce new topics or additional objectives.
+  length_budget: null
 
-  length_budget: |
-    LENGTH LIMITS:
-    - analysis<=60 chars
-    - expected_answer<=120 chars
-    - followup_question<=120 chars
+  scoring_rule: null
 
-  scoring_rule: "Scoring rule: Judge ONLY content relevance/completeness/accuracy. Do NOT penalize style or formatting."
-
-  strict_output: |-
-    STRICT OUTPUT (NO MARKDOWN):
-    - RAW JSON only, ONE LINE.
-    - Use COMPACT JSON (no spaces around ':' and ',').
-    - No extra text.
+  strict_output:
+    description: Respond in this exact JSON format
+    schema:
+      rating:
+        type: string
+        enum: [COMPLETE, INCOMPLETE]
+      reason:
+        type: string
+        description: One sentence explaining why
+      probing_question:
+        type: string
+        nullable: true
+        description: A follow-up question if INCOMPLETE, or null if COMPLETE
 
 prompts:
   - nodeId: Q1
     prompt: |-
-      Kazi:
-      - Tambua udhaifu (vipimo visivyo wazi, misimu kukosekana, baseline kutoeleweka).
-      - Toa expected_answer moja thabiti: wastani wa hasara ya FAW kwa misimu 3 iliyopita (% au magunia/ekari).
-      - Uliza followup_question 1 tu ili kuthibitisha JIBU HILO HILO (au "" ikiwa halihitajiki).
-      - Toa score 1–100.
+      completeness_criteria:
+        complete:
+          description: A complete answer includes most of the following
+          criteria:
+            - An indication of severity or scale of loss (e.g. percentage, amount, or descriptive magnitude)
+            - Coverage across multiple seasons (not just one)
+            - Personal impact on their own farm (not just neighbors or the community)
+            - At least one consequence — economic, behavioral, or food security related
+
+        incomplete:
+          description: An incomplete answer may exhibit one or more of the following
+          criteria:
+            - Too vague or general (e.g. "it was bad" with no detail)
+            - Only covers one season out of three
+            - Describes the pest or response actions without stating actual harvest impact
+            - Speaks only about other farmers rather than themselves
+            - Mentions impact without any scale, severity, or consequence
 
       Swali: {{QUESTION}}
       Jibu: {{ANSWER}}
