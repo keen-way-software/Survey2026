@@ -42,7 +42,7 @@ slm:
   empty_json_instruction: "Jibu kwa kitu cha JSON kilicho tupu: {}"
   preamble: "Wewe ni mtaalamu mashuhuri wa tafiti za wakulima. Soma Swali na Jibu."
 
-  key_contract: 
+  key_contract: |
     role: >
       You are an agricultural survey assistant helping to evaluate farmer responses about crop damage from fall armyworm.
     task: >
@@ -52,7 +52,7 @@ slm:
 
   scoring_rule: null
 
-  strict_output:
+  strict_output: |-
     description: Respond in this exact JSON format
     schema:
       rating:
@@ -87,8 +87,8 @@ prompts:
             - Speaks only about other farmers rather than themselves
             - Mentions impact without any scale, severity, or consequence
 
-      Swali: {{QUESTION}}
-      Jibu: {{ANSWER}}
+      Question: {{QUESTION}}
+      Answer: {{ANSWER}}
 
 model_defaults:
   default_model_url: "https://huggingface.co/google/gemma-3n-E4B-it-litert-lm/resolve/main/gemma-3n-E4B-it-int4.litertlm"
